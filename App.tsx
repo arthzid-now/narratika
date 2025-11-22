@@ -250,7 +250,7 @@ function App() {
           setStories(stories.map(s => s.id === activeStoryId ? { 
               ...s, 
               title: result.title, 
-              premise: result.premise,
+              premise: result.premise, 
               tone: result.tone, 
               writingStyle: result.writingStyle,
               lastUpdated: Date.now() 
@@ -395,17 +395,49 @@ function App() {
       content: ''
     };
     updateStoryField('chapters', [...activeStory!.chapters, newChapter]);
-    setActiveChapterId(newChapter.id);
   };
+
+  const handleStartWriting = () => {
+    if (!activeStory) return;
+    
+    if (activeStory.chapters.length === 0) {
+        // Manually creating chapter here to ensure synchronous state update logic
+        const newChapterId = generateId();
+        const newChapter: Chapter = {
+          id: newChapterId,
+          title: `${uiLanguage === 'id' ? 'Bab' : 'Chapter'} 1`,
+          content: ''
+        };
+        // Direct state update to ensure immediate availability
+        const updatedChapters = [newChapter];
+        setStories(stories.map(s => s.id === activeStoryId ? { ...s, chapters: updatedChapters, lastUpdated: Date.now() } : s));
+        setActiveChapterId(newChapterId);
+    } else {
+        if (!activeChapterId || !activeStory.chapters.find(c => c.id === activeChapterId)) {
+            setActiveChapterId(activeStory.chapters[0].id);
+        }
+    }
+    setView(ViewState.EDITOR);
+  };
+
+  const handleCreateNewChapter = () => {
+      if (!activeStory) return;
+      const newChapterId = generateId();
+      const newChapter: Chapter = {
+        id: newChapterId,
+        title: `${uiLanguage === 'id' ? 'Bab' : 'Chapter'} ${activeStory.chapters.length + 1}`,
+        content: ''
+      };
+      const updatedChapters = [...activeStory.chapters, newChapter];
+      setStories(stories.map(s => s.id === activeStoryId ? { ...s, chapters: updatedChapters, lastUpdated: Date.now() } : s));
+      setActiveChapterId(newChapterId);
+  }
 
   const updateChapterContent = (content: string) => {
     if (!activeStoryId || !activeChapterId) return;
     
-    // Update locally immediately
     const updatedChapters = activeStory!.chapters.map(c => c.id === activeChapterId ? { ...c, content } : c);
     setStories(stories.map(s => s.id === activeStoryId ? { ...s, chapters: updatedChapters, lastUpdated: Date.now() } : s));
-    
-    // Auto-resize textarea handled by useEffect
   };
   
   const updateChapterTitle = (title: string) => {
@@ -420,8 +452,6 @@ function App() {
     setWriterStatus(t.generating);
 
     // FIX 2: Phantom Cursor Logic
-    // If selectionStart is 0 but content exists, it implies lost focus. 
-    // We default to appending to the end to prevent writing at the top.
     let cursor = editorRef.current.selectionStart;
     if (cursor === 0 && activeChapter.content.length > 0) {
         cursor = activeChapter.content.length;
@@ -465,7 +495,7 @@ function App() {
 
   // --- Render Helpers ---
   const renderHeader = () => (
-    <header className="h-16 bg-white/80 backdrop-blur-md border-b border-stone-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-40">
+    <header className="h-16 bg-white/80 backdrop-blur-md border-b border-stone-200 flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-40">
       <div className="flex items-center gap-4">
          {view !== ViewState.DASHBOARD && (
            <Button variant="ghost" onClick={() => setView(ViewState.DASHBOARD)} size="sm">
@@ -489,75 +519,75 @@ function App() {
     </header>
   );
 
-  // --- View: Dashboard (Bento Grid) ---
+  // --- View: Dashboard ---
   if (view === ViewState.DASHBOARD) {
     return (
-      <div className="min-h-screen bg-bone font-sans text-ink selection:bg-purple-100 selection:text-purple-900">
+      <div className="h-screen bg-bone font-sans text-ink flex flex-col overflow-hidden">
         {renderHeader()}
         
-        <main className="max-w-7xl mx-auto p-4 md:p-12">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-12 gap-4">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-2 md:mb-3 text-ink tracking-tight">{t.startNovel}</h2>
-              <p className="text-stone-500 font-medium text-sm md:text-base">{t.appDesc}</p>
-            </div>
-            <div className="flex gap-3 w-full md:w-auto">
-                <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="flex-1 md:flex-none shadow-sm justify-center">
-                   📥 {t.importStory}
-                </Button>
-                <Button onClick={createNewStory} variant="primary" className="flex-1 md:flex-none shadow-lg shadow-stone-900/20 justify-center">
-                   {t.createNew}
-                </Button>
-            </div>
-          </div>
-
-          {stories.length === 0 ? (
-            <div className="border-2 border-dashed border-stone-300 rounded-3xl p-8 md:p-16 text-center bg-white/50">
-              <div className="text-6xl mb-6 opacity-20">📚</div>
-              <p className="text-xl font-serif text-stone-400 mb-6">{t.noStories}</p>
-              <Button onClick={createNewStory} variant="magic">{t.createNew}</Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {stories.map(story => (
-                <div 
-                  key={story.id} 
-                  onClick={() => { setActiveStoryId(story.id); setView(ViewState.PLANNER); }}
-                  // FIX 5: Sticky Hover. Added `md:hover:` to restrict hover effects to desktop mostly
-                  className="group bg-white rounded-3xl p-6 md:p-8 border border-stone-200 shadow-sm md:hover:shadow-2xl md:hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden flex flex-col h-64 md:h-72 active:scale-[0.98]"
-                >
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-stone-200 to-stone-100 group-hover:from-indigo-500 group-hover:to-purple-500 transition-colors duration-300"></div>
-                  
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-4">
-                       <span className="inline-block px-3 py-1 rounded-full bg-stone-100 text-stone-500 text-xs font-bold uppercase tracking-widest">
-                         {story.language === 'id' ? 'Bahasa' : 'English'}
-                       </span>
-                       <button 
-                         onClick={(e) => deleteStory(e, story.id)}
-                         // FIX: Cleaned up delete button alignment. No more negative margins.
-                         className="text-stone-300 hover:text-red-500 transition-colors p-2"
-                       >
-                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                       </button>
-                    </div>
-                    
-                    <h3 className="text-xl md:text-2xl font-serif font-bold mb-2 line-clamp-2 text-ink group-hover:text-indigo-900 transition-colors">
-                        {story.title}
-                    </h3>
-                    <p className="text-sm text-stone-500 line-clamp-3 leading-relaxed">
-                        {story.premise || story.plotOutline || t.premisePlaceholder}
-                    </p>
-                  </div>
-
-                  <div className="pt-6 border-t border-stone-100 mt-4 flex justify-between items-center text-xs font-bold text-stone-400 uppercase tracking-wide">
-                    <span>{story.chapters.length} {t.chapters}</span>
-                    <span>{new Date(story.lastUpdated).toLocaleDateString()}</span>
-                  </div>
+        <main className="flex-1 overflow-y-auto p-4 md:p-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-12 gap-4">
+                <div>
+                <h2 className="text-3xl md:text-4xl font-serif font-bold mb-2 md:mb-3 text-ink tracking-tight">{t.startNovel}</h2>
+                <p className="text-stone-500 font-medium text-sm md:text-base">{t.appDesc}</p>
                 </div>
-              ))}
+                <div className="flex gap-3 w-full md:w-auto">
+                    <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="flex-1 md:flex-none shadow-sm justify-center">
+                    📥 {t.importStory}
+                    </Button>
+                    <Button onClick={createNewStory} variant="primary" className="flex-1 md:flex-none shadow-lg shadow-stone-900/20 justify-center">
+                    {t.createNew}
+                    </Button>
+                </div>
             </div>
-          )}
+
+            {stories.length === 0 ? (
+                <div className="border-2 border-dashed border-stone-300 rounded-3xl p-8 md:p-16 text-center bg-white/50">
+                <div className="text-6xl mb-6 opacity-20">📚</div>
+                <p className="text-xl font-serif text-stone-400 mb-6">{t.noStories}</p>
+                <Button onClick={createNewStory} variant="magic">{t.createNew}</Button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-10">
+                {stories.map(story => (
+                    <div 
+                    key={story.id} 
+                    onClick={() => { setActiveStoryId(story.id); setView(ViewState.PLANNER); }}
+                    className="group bg-white rounded-3xl p-6 md:p-8 border border-stone-200 shadow-sm md:hover:shadow-2xl md:hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden flex flex-col h-64 md:h-72 active:scale-[0.98]"
+                    >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-stone-200 to-stone-100 group-hover:from-indigo-500 group-hover:to-purple-500 transition-colors duration-300"></div>
+                    
+                    <div className="flex-1">
+                        <div className="flex justify-between items-start mb-4">
+                        <span className="inline-block px-3 py-1 rounded-full bg-stone-100 text-stone-500 text-xs font-bold uppercase tracking-widest">
+                            {story.language === 'id' ? 'Bahasa' : 'English'}
+                        </span>
+                        <button 
+                            onClick={(e) => deleteStory(e, story.id)}
+                            className="text-stone-300 hover:text-red-500 transition-colors p-2"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                        </div>
+                        
+                        <h3 className="text-xl md:text-2xl font-serif font-bold mb-2 line-clamp-2 text-ink group-hover:text-indigo-900 transition-colors">
+                            {story.title}
+                        </h3>
+                        <p className="text-sm text-stone-500 line-clamp-3 leading-relaxed">
+                            {story.premise || story.plotOutline || t.premisePlaceholder}
+                        </p>
+                    </div>
+
+                    <div className="pt-6 border-t border-stone-100 mt-4 flex justify-between items-center text-xs font-bold text-stone-400 uppercase tracking-wide">
+                        <span>{story.chapters.length} {t.chapters}</span>
+                        <span>{new Date(story.lastUpdated).toLocaleDateString()}</span>
+                    </div>
+                    </div>
+                ))}
+                </div>
+            )}
+          </div>
         </main>
 
         {/* Import Modal */}
@@ -609,13 +639,13 @@ function App() {
     ];
 
     return (
-      <div className="min-h-screen bg-bone font-sans text-ink flex flex-col">
+      <div className="h-screen bg-bone font-sans text-ink flex flex-col overflow-hidden">
         {renderHeader()}
         
+        {/* FIX: Layout logic - Main is flex row, but inside we have nav and section stacked */}
         <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-            {/* Mobile Navigation for Planner */}
-            {/* FIX: Sticky positioning top-16 so it sits below the header instead of behind it */}
-            <nav className="md:hidden bg-white border-b border-stone-200 flex overflow-x-auto scrollbar-hide sticky top-16 z-30 shadow-sm">
+            {/* Mobile Navigation: Static block, no sticky needed as parent doesn't scroll */}
+            <nav className="md:hidden bg-white border-b border-stone-200 flex overflow-x-auto scrollbar-hide flex-shrink-0 z-30 shadow-sm">
                 {tabs.map(tab => (
                     <button 
                         key={tab.id}
@@ -629,7 +659,7 @@ function App() {
             </nav>
 
             {/* Desktop Planner Sidebar */}
-            <aside className="w-64 border-r border-stone-200 bg-white hidden md:flex flex-col">
+            <aside className="w-64 border-r border-stone-200 bg-white hidden md:flex flex-col flex-shrink-0">
                 <nav className="p-4 space-y-1">
                     {tabs.map(tab => (
                         <button 
@@ -643,17 +673,13 @@ function App() {
                     ))}
                 </nav>
                 <div className="mt-auto p-4 border-t border-stone-100">
-                    <Button onClick={() => {
-                        if (activeStory.chapters.length === 0) createChapter();
-                        setActiveChapterId(activeStory.chapters[0]?.id || null);
-                        setView(ViewState.EDITOR);
-                    }} className="w-full" variant="primary" size="lg">
+                    <Button onClick={handleStartWriting} className="w-full" variant="primary" size="lg">
                         {t.startWriting}
                     </Button>
                 </div>
             </aside>
 
-            {/* Planner Content Area */}
+            {/* Planner Content Area: This creates the scroll container */}
             <section className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-12 bg-bone">
                 <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-stone-200 shadow-sm p-6 md:p-12 min-h-full">
                     
@@ -689,19 +715,34 @@ function App() {
                         <div className="space-y-8 md:space-y-10 animate-fade-in">
                              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                  <h2 className="text-2xl md:text-3xl font-serif font-bold">{t.overview}</h2>
-                                 <Button variant="magic" size="sm" onClick={handleIgniteGenesis} disabled={!activeStory.premise} className="w-full md:w-auto">
-                                     {t.genesisBtn}
-                                 </Button>
+                                 <div className="relative group w-full md:w-auto">
+                                    <Button variant="magic" size="sm" onClick={handleIgniteGenesis} disabled={!activeStory.premise} className="w-full md:w-auto">
+                                        {t.genesisBtn}
+                                    </Button>
+                                    <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-ink text-white text-xs rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                        {t.genesisTooltip}
+                                    </div>
+                                 </div>
                              </div>
 
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                                 <div className="col-span-2">
+                                 <div className="col-span-1 md:col-span-2">
                                      <PlannerField className="mb-0" label={t.title} fieldKey="title" value={activeStory.title} story={activeStory} uiLanguage={uiLanguage} onChange={(v) => updateStoryField('title', v)} />
                                  </div>
                                  
-                                 <div className="col-span-2">
-                                     <label className="block text-xs font-extrabold text-ink uppercase tracking-widest mb-3">{t.genres}</label>
-                                     {/* FIX: Genre Wall Mobile - Horizontal Scroll */}
+                                 <div className="col-span-1 md:col-span-2">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <label className="block text-xs font-extrabold text-ink uppercase tracking-widest">{t.genres}</label>
+                                        <div className="relative group">
+                                            <Button variant="ghost" size="sm" onClick={handleAutoSetup} isLoading={isAutoSettingUp} className="text-[10px] text-indigo-600 px-2 py-0 h-6 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg">
+                                            ✨ {t.autoSetup}
+                                            </Button>
+                                            <div className="absolute right-0 bottom-full mb-2 w-48 p-2 bg-ink text-white text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                                {t.autoSetupTooltip}
+                                            </div>
+                                        </div>
+                                    </div>
+                                     {/* Genre Wall Mobile - Horizontal Scroll */}
                                      <div className="flex overflow-x-auto pb-2 gap-2 mb-4 -mx-6 px-6 md:mx-0 md:px-0 md:flex-wrap scrollbar-hide">
                                          {GENRE_OPTIONS.map(g => (
                                              <button
@@ -714,7 +755,6 @@ function App() {
                                          ))}
                                      </div>
                                      <input 
-                                         // FIX 3: iOS Zoom. text-base on mobile, text-sm on desktop
                                          className="w-full bg-transparent border-b border-stone-300 py-2 text-base md:text-sm focus:border-ink outline-none placeholder-stone-400 transition-colors"
                                          placeholder={t.customGenresPlaceholder}
                                          value={activeStory.customGenres}
@@ -722,8 +762,7 @@ function App() {
                                      />
                                  </div>
 
-                                 <div className="col-span-2">
-                                      {/* FIX: Integrated Auto-Setup button into PlannerField Header */}
+                                 <div className="col-span-1 md:col-span-2">
                                       <PlannerField 
                                         className="mb-0"
                                         label={t.premise} 
@@ -734,19 +773,16 @@ function App() {
                                         onChange={(v) => updateStoryField('premise', v)} 
                                         placeholder={t.premisePlaceholder} 
                                         rows={3} 
-                                        headerAction={
-                                            <Button variant="ghost" size="sm" onClick={handleAutoSetup} isLoading={isAutoSettingUp} className="text-[10px] text-indigo-600 px-2 py-0 h-6">
-                                              ✨ {t.autoSetup}
-                                            </Button>
-                                        }
                                       />
                                  </div>
 
-                                 <div className="space-y-4 md:space-y-6">
-                                     <div>
-                                        <label className="block text-xs font-extrabold text-ink uppercase tracking-widest mb-3">{t.tone}</label>
+                                 {/* Tone & Style Section - Compact Grid on Mobile */}
+                                 <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-3 md:gap-8">
+                                     {/* Tone Column */}
+                                     <div className="space-y-2">
+                                        <label className="block text-[10px] md:text-xs font-extrabold text-ink uppercase tracking-widest">{t.tone}</label>
                                         <select 
-                                            className="w-full p-3 rounded-xl border border-stone-300 bg-stone-50 text-base md:text-sm font-medium focus:ring-2 focus:ring-ink outline-none mb-2 appearance-none"
+                                            className="w-full p-2 md:p-3 rounded-xl border border-stone-300 bg-stone-50 text-sm md:text-sm font-medium focus:ring-2 focus:ring-ink outline-none appearance-none"
                                             value={activeStory.tone}
                                             onChange={(e) => updateStoryField('tone', e.target.value)}
                                         >
@@ -754,33 +790,32 @@ function App() {
                                             {TONE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                                         </select>
                                         <textarea
-                                            className="w-full p-3 rounded-xl border border-stone-300 text-base md:text-sm focus:ring-2 focus:ring-ink outline-none resize-none h-24 placeholder-stone-400"
+                                            className="w-full p-2 md:p-3 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-ink outline-none resize-none h-20 md:h-24 placeholder-stone-400"
                                             placeholder={t.tonePlaceholder}
-                                            value={activeStory.tone} // Allow manual edit too by overriding
+                                            value={activeStory.tone} 
                                             onChange={(e) => updateStoryField('tone', e.target.value)}
                                         />
                                      </div>
-                                 </div>
 
-                                 <div className="space-y-4 md:space-y-6">
-                                     <div>
-                                        <div className="flex justify-between items-center mb-3">
-                                            <label className="block text-xs font-extrabold text-ink uppercase tracking-widest">{t.style}</label>
-                                            <Button variant="ghost" size="sm" onClick={() => setShowStyleRef(!showStyleRef)} className="text-[10px] uppercase font-bold text-stone-400 hover:text-ink">
-                                                {showStyleRef ? 'Hide Ref' : t.styleRef}
+                                     {/* Style Column */}
+                                     <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="block text-[10px] md:text-xs font-extrabold text-ink uppercase tracking-widest">{t.style}</label>
+                                            <Button variant="ghost" size="sm" onClick={() => setShowStyleRef(!showStyleRef)} className="text-[9px] md:text-[10px] uppercase font-bold text-stone-400 hover:text-ink px-1">
+                                                {showStyleRef ? 'Hide' : 'Ref'}
                                             </Button>
                                         </div>
                                         
                                         {showStyleRef && (
-                                            <div className="mb-4 bg-stone-50 p-4 rounded-xl border border-stone-300 animate-fade-in">
+                                            <div className="absolute left-6 right-6 z-10 bg-white shadow-xl p-4 rounded-xl border border-stone-200 animate-fade-in md:static md:shadow-none md:p-0 md:border-none md:bg-transparent md:mb-2">
                                                 <textarea
-                                                    className="w-full p-3 bg-white border border-stone-300 rounded-lg text-base md:text-xs mb-2 h-32 resize-none focus:ring-2 focus:ring-ink outline-none placeholder-stone-400"
+                                                    className="w-full p-3 bg-stone-50 border border-stone-300 rounded-lg text-xs mb-2 h-24 resize-none focus:ring-2 focus:ring-ink outline-none placeholder-stone-400"
                                                     placeholder={t.styleRefPlaceholder}
                                                     value={activeStory.styleReference}
                                                     onChange={(e) => updateStoryField('styleReference', e.target.value)}
                                                 />
                                                 <div className="flex justify-end">
-                                                    <Button size="sm" onClick={handleAnalyzeStyle} isLoading={isAnalyzingStyle} disabled={!activeStory.styleReference}>
+                                                    <Button size="sm" onClick={handleAnalyzeStyle} isLoading={isAnalyzingStyle} disabled={!activeStory.styleReference} className="text-xs py-1">
                                                         {t.analyzeStyle}
                                                     </Button>
                                                 </div>
@@ -788,7 +823,7 @@ function App() {
                                         )}
 
                                         <textarea
-                                            className="w-full p-3 rounded-xl border border-stone-300 text-base md:text-sm focus:ring-2 focus:ring-ink outline-none resize-none h-32 placeholder-stone-400"
+                                            className="w-full p-2 md:p-3 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-ink outline-none resize-none h-20 md:h-24 placeholder-stone-400"
                                             placeholder={t.stylePlaceholder}
                                             value={activeStory.writingStyle}
                                             onChange={(e) => updateStoryField('writingStyle', e.target.value)}
@@ -843,7 +878,7 @@ function App() {
                     {/* Character Edit Modal */}
                     {editingCharacter && (
                         <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                            {/* FIX 4: Modal Bottom Cliff. Added pb-32 to allow scrolling past bottom elements */}
+                            {/* FIX: Modal Bottom Cliff. Added pb-32 to allow scrolling past bottom elements */}
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 md:p-8 pb-32 animate-slide-up">
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="text-xl md:text-2xl font-serif font-bold">{editingCharacter.name ? editingCharacter.name : t.newCharacter}</h3>
@@ -953,11 +988,7 @@ function App() {
 
             {/* Mobile Planner Start Writing Floating Button (if needed) */}
              <div className="md:hidden absolute bottom-6 right-6 z-20">
-                 <Button onClick={() => {
-                    if (activeStory.chapters.length === 0) createChapter();
-                    setActiveChapterId(activeStory.chapters[0]?.id || null);
-                    setView(ViewState.EDITOR);
-                }} variant="primary" className="shadow-xl rounded-full h-14 w-14 flex items-center justify-center p-0">
+                 <Button onClick={handleStartWriting} variant="primary" className="shadow-xl rounded-full h-14 w-14 flex items-center justify-center p-0">
                     ✎
                 </Button>
             </div>
@@ -1032,7 +1063,7 @@ function App() {
                            {chapter.title}
                         </div>
                     ))}
-                    <Button onClick={createChapter} variant="secondary" size="sm" className="w-full mt-4 border-dashed">
+                    <Button onClick={handleCreateNewChapter} variant="secondary" size="sm" className="w-full mt-4 border-dashed">
                         {t.newChapter}
                     </Button>
                 </div>
