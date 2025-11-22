@@ -1,0 +1,5 @@
+{
+  "name": "Narratika",
+  "description": "An AI-powered novel writing assistant helping authors from planning to drafting with Gemini models.",
+  "requestFramePermissions": []
+}
