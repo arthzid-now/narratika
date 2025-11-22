@@ -1,8 +1,9 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'magic';
   isLoading?: boolean;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 export const Button: React.FC<ButtonProps> = ({ 
@@ -10,20 +11,37 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'primary', 
   isLoading, 
   className = '', 
+  size = 'md',
   ...props 
 }) => {
-  const baseStyles = "px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2";
+  const baseStyles = "font-sans font-medium transition-all duration-200 focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98]";
   
+  const sizeStyles = {
+    sm: "px-3 py-1.5 text-xs rounded-lg",
+    md: "px-5 py-2.5 text-sm rounded-xl",
+    lg: "px-8 py-3 text-base rounded-xl",
+  };
+
   const variants = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500",
-    secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-indigo-500",
-    ghost: "text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-500",
-    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
+    // Swiss Style: High contrast, solid ink black
+    primary: "bg-ink text-white hover:bg-gray-800 shadow-sm hover:shadow-md",
+    
+    // Swiss Style: Clean borders, muted interaction
+    secondary: "bg-white text-ink border border-stone-200 hover:border-stone-400 hover:bg-stone-50",
+    
+    // Minimalist
+    ghost: "text-stone-600 hover:bg-stone-100 hover:text-ink",
+    
+    // Semantic
+    danger: "bg-red-50 text-red-600 border border-red-100 hover:bg-red-100",
+    
+    // The "Aurora" Effect for AI features
+    magic: "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white bg-[length:200%_200%] animate-aurora shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 border border-transparent",
   };
 
   return (
     <button 
-      className={`${baseStyles} ${variants[variant]} ${className}`}
+      className={`${baseStyles} ${sizeStyles[size]} ${variants[variant]} ${className}`}
       disabled={isLoading || props.disabled}
       {...props}
     >

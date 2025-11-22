@@ -14,23 +14,67 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
-              paper: '#fdfbf7',
-              ink: '#2d2d2d',
+              bone: '#fafaf9', // Stone 50
+              paper: '#ffffff',
+              ink: '#1c1917', // Stone 900
+              subtle: '#a8a29e', // Stone 400
+              'stone-border': '#e7e5e4', // Stone 200
+            },
+            animation: {
+              'aurora': 'aurora 6s ease infinite',
+              'fade-in': 'fadeIn 0.5s ease-out',
+              'slide-up': 'slideUp 0.5s ease-out',
+            },
+            keyframes: {
+              aurora: {
+                '0%, 100%': { backgroundPosition: '0% 50%' },
+                '50%': { backgroundPosition: '100% 50%' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(10px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              }
             }
           }
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
     <style>
       body {
-        background-color: #f3f4f6;
+        background-color: #fafaf9; /* Bone */
+        color: #1c1917;
       }
       .prose-editor {
         font-family: 'Merriweather', serif;
-        line-height: 1.8;
+        line-height: 1.9;
         font-size: 1.125rem;
-        color: #2d2d2d;
+        color: #292524; /* Stone 800 */
+      }
+      /* Custom Scrollbar for a cleaner look */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #e7e5e4;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #d6d3d1;
+      }
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
       }
     </style>
   <script type="importmap">

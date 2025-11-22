@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Story, CharacterProfile, WorldItem, WORLD_CATEGORIES } from "../types";
 
@@ -729,32 +728,36 @@ export interface ExtractedStoryDNA {
 }
 
 export const extractStoryDna = async (fullText: string, language: string): Promise<ExtractedStoryDNA | null> => {
-    // Limit text analysis to approx 500k characters to fit context window.
-    // Flash model has 1M window, so this is safe.
-    const textSample = fullText.substring(0, 500000);
+    // We allow the model to read as much as it can. Flash model has 1M context window.
+    // We won't substring unnecessarily, but just to be safe against browser string limits, we cap at 2 Million chars.
+    const textSample = fullText.substring(0, 2000000);
     
     const allowedCategories = WORLD_CATEGORIES.join(', ');
+    const langInstruction = language === 'id' 
+        ? "Input Text is likely Indonesian. OUTPUT ALL JSON VALUES IN INDONESIAN." 
+        : "Input Text is likely English. OUTPUT ALL JSON VALUES IN ENGLISH.";
 
     const prompt = `
       Role: Senior Editor & Analyst.
       Task: Deeply analyze the provided novel text (which may contain multiple chapters).
       Extract the core "DNA" of the story into a structured JSON format.
       
+      INSTRUCTION:
+      READ THE ENTIRE TEXT PROVIDED. Do not just read the beginning.
+      ${langInstruction}
+
       NOVEL TEXT SAMPLE:
       ${textSample}
       
-      INSTRUCTIONS:
+      OUTPUT REQUIREMENTS:
       1. Title: If the text has a title, use it. If not, create a catchy one.
       2. Premise: Summarize the entire plot so far into a 1-paragraph logline.
       3. Characters: Extract main characters found in the text. Infer their roles, traits, and appearance based on the text actions.
       4. World: Extract key locations, items, or factions mentioned. 
-         CRITICAL: World Item Category MUST be one of: [${allowedCategories}]. If unsure, use 'Other'.
+         CRITICAL: World Item Category MUST be one of: [${allowedCategories}]. 
+         If a world item does not fit these exact categories, put it in 'Other'. 
+         DO NOT INVENT NEW CATEGORIES like "Social Structure" or "Concept".
       5. Plot Outline: Summarize what happened in these chapters sequentially.
-      
-      CONSTRAINT:
-      ${getLanguageInstruction(language)}
-      - For World Items, you MUST strictly use one of these categories: ${allowedCategories}.
-      - If a world item does not fit, use 'Other'. Do not invent new categories.
     `;
 
     try {
@@ -799,7 +802,7 @@ export const extractStoryDna = async (fullText: string, language: string): Promi
                             }
                         }
                     },
-                    required: ["title", "premise", "tone", "writingStyle", "characters", "plotOutline"]
+                    required: ["title", "premise", "tone", "writingStyle", "characters", "plotOutline", "worldItems"]
                 }
             }
         });
@@ -815,12 +818,9 @@ export const extractStoryDna = async (fullText: string, language: string): Promi
 
 // Heuristic helper to split text into chapters locally without wasting AI tokens
 export const smartSplitText = (fullText: string): { title: string, content: string }[] => {
-    // Regex to find Chapter headings. 
-    // Improved to catch:
-    // "Chapter 1", "Bab 1", "Bagian I"
-    // "## Chapter 1"
-    // Standalone numbers/roman numerals if they look like headers (start of line, followed by newline)
-    const chapterRegex = /(?:^|\n)(?:\s*#{1,3}\s*)?(?:Chapter|Bab|Bagian|Part|Book|Vol|Volume|Prologue|Epilogue|Prolog|Epilog|Permulaan|Akhiran|Episode)\s*(?:[0-9]+|[IVXLCDM]+|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Satu|Dua|Tiga|Empat|Lima|Enam|Tujuh|Delapan|Sembilan|Sepuluh)?.*$/gim;
+    // Improved Regex to find Chapter headings. 
+    // Matches: "Chapter 1", "Bab 1", "Bagian I", "## Title", "1." (at start of line)
+    const chapterRegex = /(?:^|\n)\s*(?:#{1,3}\s+)?(?:Chapter|Bab|Bagian|Part|Book|Vol|Volume|Prologue|Epilogue|Prolog|Epilog|Permulaan|Akhiran|Episode|Satu|Dua|Tiga|Empat|Lima|Enam|Tujuh|Delapan|Sembilan|Sepuluh|[0-9]+)\s*(?:[0-9]+|[IVXLCDM]+|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Satu|Dua|Tiga|Empat|Lima|Enam|Tujuh|Delapan|Sembilan|Sepuluh)?(?:\s*[:\.-])?.*$/gim;
     
     const splits: { title: string, content: string }[] = [];
     let match;
@@ -828,15 +828,25 @@ export const smartSplitText = (fullText: string): { title: string, content: stri
     // Find all headings
     const indices = [];
     while ((match = chapterRegex.exec(fullText)) !== null) {
-        // Check if it's a false positive (e.g. inside a sentence). 
-        // The regex start anchor (^|\n) helps, but let's ensure it doesn't match too much.
-        if(match[0].trim().length < 100) { // Heuristic: Headers usually aren't super long sentences
+        // Heuristic: Headers usually aren't super long sentences (>100 chars is suspicious)
+        if(match[0].trim().length < 100 && match[0].trim().length > 2) { 
              indices.push({ index: match.index, title: match[0].trim() });
         }
     }
 
     if (indices.length === 0) {
-        // Fallback: Try splitting by double newlines and looking for short all-caps lines or short lines with numbers
+        // Fallback: If the text is very long (>20k chars) and no headers found, split by length approx every 15k chars
+        if (fullText.length > 20000) {
+             const chunkSize = 15000;
+             let numChunks = Math.ceil(fullText.length / chunkSize);
+             for(let i=0; i<numChunks; i++) {
+                 splits.push({
+                     title: `Part ${i+1}`,
+                     content: fullText.substring(i*chunkSize, (i+1)*chunkSize)
+                 });
+             }
+             return splits;
+        }
         return [{ title: "Imported Text", content: fullText }];
     }
 
@@ -845,7 +855,7 @@ export const smartSplitText = (fullText: string): { title: string, content: stri
         const next = indices[i + 1];
         
         // If there is text BEFORE the first chapter heading (e.g. Prologue or Title page), capture it
-        if (i === 0 && current.index > 0) {
+        if (i === 0 && current.index > 100) { // Only if substantial text before
             const introContent = fullText.substring(0, current.index).trim();
             if (introContent.length > 0) {
                 splits.push({
@@ -859,7 +869,7 @@ export const smartSplitText = (fullText: string): { title: string, content: stri
         // Avoid creating empty chapters if there are adjacent headers
         if (content.length > 0) {
              splits.push({
-                 title: current.title.replace(/^[#\s]+/, ''), // Clean markdown syntax from title
+                 title: current.title.replace(/^[#\s]+/, '').trim(), // Clean markdown syntax from title
                  content: content
              });
         }

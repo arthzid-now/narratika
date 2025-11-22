@@ -12,6 +12,26 @@ interface GeneratorProps {
   onSave: (text: string) => void;
 }
 
+const GeneratorCard: React.FC<{ title: string, icon: string, children: React.ReactNode, onBulk?: () => void, bulkLoading?: boolean, bulkLabel?: string }> = ({ title, icon, children, onBulk, bulkLoading, bulkLabel }) => (
+  <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow mb-8 relative overflow-hidden">
+    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-purple-500"></div>
+    <div className="flex justify-between items-center mb-6 pl-2">
+      <h3 className="font-sans font-bold text-ink flex items-center gap-2 text-lg tracking-tight">
+        <span className="text-2xl">{icon}</span>
+        {title}
+      </h3>
+      {onBulk && (
+        <Button variant="ghost" size="sm" onClick={onBulk} isLoading={bulkLoading} className="text-xs text-purple-600 hover:bg-purple-50">
+          {bulkLabel}
+        </Button>
+      )}
+    </div>
+    <div className="pl-2">
+        {children}
+    </div>
+  </div>
+);
+
 export const CharacterGenerator: React.FC<GeneratorProps> = ({ story, uiLanguage, onSave }) => {
   const [name, setName] = useState('');
   const [archetype, setArchetype] = useState('');
@@ -37,32 +57,30 @@ export const CharacterGenerator: React.FC<GeneratorProps> = ({ story, uiLanguage
   };
 
   return (
-    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 mb-8">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-gray-900 flex items-center gap-2 text-lg">
-          <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-md text-sm">AI</span>
-          {t.genCharTitle}
-        </h3>
-        <Button variant="ghost" onClick={handleBulkSuggest} isLoading={bulkLoading} className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200">
-          {t.suggestAllChars}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+    <GeneratorCard 
+        title={t.genCharTitle} 
+        icon="👤" 
+        onBulk={handleBulkSuggest} 
+        bulkLoading={bulkLoading} 
+        bulkLabel={t.suggestAllChars}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{t.genName}</label>
+          <label className="block text-xs font-bold text-stone-500 uppercase mb-2 tracking-wide">{t.genName}</label>
           <input 
-            className="w-full border border-gray-300 bg-white rounded-lg text-sm px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm" 
+            // FIX: iOS Zoom (text-base)
+            className="w-full border border-stone-200 bg-stone-50 rounded-xl text-base md:text-sm px-4 py-3 text-ink focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all" 
             placeholder="e.g. Elara Vance"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{t.genArchetype}</label>
+          <label className="block text-xs font-bold text-stone-500 uppercase mb-2 tracking-wide">{t.genArchetype}</label>
           <input 
-            className="w-full border border-gray-300 bg-white rounded-lg text-sm px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm" 
-            placeholder="e.g. Reluctant Hero, Cyber-Ninja"
+            // FIX: iOS Zoom (text-base)
+            className="w-full border border-stone-200 bg-stone-50 rounded-xl text-base md:text-sm px-4 py-3 text-ink focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all" 
+            placeholder="e.g. Reluctant Hero"
             value={archetype}
             onChange={(e) => setArchetype(e.target.value)}
           />
@@ -70,25 +88,25 @@ export const CharacterGenerator: React.FC<GeneratorProps> = ({ story, uiLanguage
       </div>
       
       {!generated ? (
-        <Button onClick={handleGenerate} isLoading={loading} disabled={!name || !archetype} className="w-full py-2.5 shadow-sm">
+        <Button onClick={handleGenerate} isLoading={loading} variant="magic" disabled={!name || !archetype} className="w-full">
           {t.genBtnChar}
         </Button>
       ) : (
         <div className="animate-fade-in">
-          <div className="bg-white p-5 rounded-lg text-sm mb-4 max-h-80 overflow-y-auto border border-gray-200 shadow-inner">
+          <div className="bg-stone-50 p-5 rounded-xl text-sm mb-4 max-h-80 overflow-y-auto border border-stone-200 font-serif leading-relaxed">
             <MarkdownRenderer content={generated} />
           </div>
           <div className="flex gap-3">
-            <Button onClick={() => { onSave(generated); setGenerated(''); setName(''); setArchetype(''); }} size="sm" className="flex-1 shadow-sm">
+            <Button onClick={() => { onSave(generated); setGenerated(''); setName(''); setArchetype(''); }} size="sm" className="flex-1">
               {t.addToChar}
             </Button>
-            <Button variant="secondary" onClick={() => setGenerated('')} size="sm">
+            <Button variant="ghost" onClick={() => setGenerated('')} size="sm">
               {t.discard}
             </Button>
           </div>
         </div>
       )}
-    </div>
+    </GeneratorCard>
   );
 };
 
@@ -119,22 +137,19 @@ export const WorldGenerator: React.FC<GeneratorProps> = ({ story, uiLanguage, on
   };
 
   return (
-    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 mb-8">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-gray-900 flex items-center gap-2 text-lg">
-          <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-md text-sm">AI</span>
-          {t.genWorldTitle}
-        </h3>
-        <Button variant="ghost" onClick={handleBulkSuggest} isLoading={bulkLoading} className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200">
-          {t.suggestAllWorld}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+    <GeneratorCard 
+        title={t.genWorldTitle} 
+        icon="🌍" 
+        onBulk={handleBulkSuggest} 
+        bulkLoading={bulkLoading} 
+        bulkLabel={t.suggestAllWorld}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{t.genCategory}</label>
+          <label className="block text-xs font-bold text-stone-500 uppercase mb-2 tracking-wide">{t.genCategory}</label>
           <select 
-            className="w-full border border-gray-300 bg-white rounded-lg text-sm px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm appearance-none cursor-pointer"
+            // FIX: iOS Zoom (text-base)
+            className="w-full border border-stone-200 bg-stone-50 rounded-xl text-base md:text-sm px-4 py-3 text-ink focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
@@ -142,10 +157,11 @@ export const WorldGenerator: React.FC<GeneratorProps> = ({ story, uiLanguage, on
           </select>
         </div>
         <div className="md:col-span-2">
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{t.genTopic}</label>
+          <label className="block text-xs font-bold text-stone-500 uppercase mb-2 tracking-wide">{t.genTopic}</label>
           <input 
-            className="w-full border border-gray-300 bg-white rounded-lg text-sm px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm" 
-            placeholder="e.g. The Floating Isles, The Great War"
+            // FIX: iOS Zoom (text-base)
+            className="w-full border border-stone-200 bg-stone-50 rounded-xl text-base md:text-sm px-4 py-3 text-ink focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all" 
+            placeholder="e.g. The Floating Isles"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
           />
@@ -153,25 +169,25 @@ export const WorldGenerator: React.FC<GeneratorProps> = ({ story, uiLanguage, on
       </div>
       
       {!generated ? (
-        <Button onClick={handleGenerate} isLoading={loading} disabled={!topic} className="w-full py-2.5 shadow-sm">
+        <Button onClick={handleGenerate} isLoading={loading} variant="magic" disabled={!topic} className="w-full">
           {t.genBtnWorld}
         </Button>
       ) : (
         <div className="animate-fade-in">
-          <div className="bg-white p-5 rounded-lg text-sm mb-4 max-h-80 overflow-y-auto border border-gray-200 shadow-inner">
+          <div className="bg-stone-50 p-5 rounded-xl text-sm mb-4 max-h-80 overflow-y-auto border border-stone-200 font-serif leading-relaxed">
             <MarkdownRenderer content={generated} />
           </div>
           <div className="flex gap-3">
-            <Button onClick={() => { onSave(generated); setGenerated(''); setTopic(''); }} size="sm" className="flex-1 shadow-sm">
+            <Button onClick={() => { onSave(generated); setGenerated(''); setTopic(''); }} size="sm" className="flex-1">
               {t.addToWorld}
             </Button>
-            <Button variant="secondary" onClick={() => setGenerated('')} size="sm">
+            <Button variant="ghost" onClick={() => setGenerated('')} size="sm">
               {t.discard}
             </Button>
           </div>
         </div>
       )}
-    </div>
+    </GeneratorCard>
   );
 };
 
@@ -204,45 +220,42 @@ export const PlotGenerator: React.FC<GeneratorProps> = ({ story, uiLanguage, onS
   };
 
   return (
-    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 mb-8">
-      <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-lg">
-        <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-md text-sm">AI</span>
-        {t.genPlotTitle}
-      </h3>
-      <div className="mb-5">
-        <label className="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{t.genStructure}</label>
+    <GeneratorCard title={t.genPlotTitle} icon="📈">
+      <div className="mb-6">
+        <label className="block text-xs font-bold text-stone-500 uppercase mb-2 tracking-wide">{t.genStructure}</label>
         <select 
-          className="w-full border border-gray-300 bg-white rounded-lg text-sm px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm appearance-none cursor-pointer"
+          // FIX: iOS Zoom (text-base)
+          className="w-full border border-stone-200 bg-stone-50 rounded-xl text-base md:text-sm px-4 py-3 text-ink focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
           value={structure}
           onChange={(e) => setStructure(e.target.value)}
         >
           {PLOT_STRUCTURES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded text-xs text-blue-800 leading-relaxed">
+        <div className="mt-3 p-4 bg-blue-50/50 border border-blue-100 rounded-xl text-xs text-blue-800 leading-relaxed">
            <span className="font-bold">ℹ️ {structure}: </span>
            {t[getDescKey(structure)] || t.plotHelp}
         </div>
       </div>
       
       {!generated ? (
-        <Button onClick={handleGenerate} isLoading={loading} className="w-full py-2.5 shadow-sm">
+        <Button onClick={handleGenerate} isLoading={loading} variant="magic" className="w-full">
           {t.genBtnPlot}
         </Button>
       ) : (
         <div className="animate-fade-in">
-          <div className="bg-white p-5 rounded-lg text-sm mb-4 max-h-80 overflow-y-auto border border-gray-200 shadow-inner">
+          <div className="bg-stone-50 p-5 rounded-xl text-sm mb-4 max-h-80 overflow-y-auto border border-stone-200 font-serif leading-relaxed">
              <MarkdownRenderer content={generated} />
           </div>
           <div className="flex gap-3">
-            <Button onClick={() => { onSave(generated); setGenerated(''); }} size="sm" className="flex-1 shadow-sm">
+            <Button onClick={() => { onSave(generated); setGenerated(''); }} size="sm" className="flex-1">
               {t.addToPlot}
             </Button>
-            <Button variant="secondary" onClick={() => setGenerated('')} size="sm">
+            <Button variant="ghost" onClick={() => setGenerated('')} size="sm">
               {t.discard}
             </Button>
           </div>
         </div>
       )}
-    </div>
+    </GeneratorCard>
   );
 };
